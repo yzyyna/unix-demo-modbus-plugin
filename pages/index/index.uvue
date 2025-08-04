@@ -1,0 +1,468 @@
+<template>
+	<view class="container">
+		<scroll-view scroll-y="true" class="scroll-view">
+			<view class="header">
+				<text class="header-title">Modbus TCP 控制台</text>
+				<text class="header-subtitle">设备连接与数据读写工具</text>
+			</view>
+
+			<view class="card">
+				<view class="card-header">
+					<text class="card-title">🔌 连接参数</text>
+				</view>
+
+				<view class="input-group">
+					<view class="input-item">
+						<text class="input-label">IP地址</text>
+						<input v-model="ip" placeholder="请输入IP地址" class="custom-input"  />
+					</view>
+
+					<view class="input-item">
+						<text class="input-label">端口</text>
+						<input v-model="port" placeholder="端口号" type="number" class="custom-input"  />
+					</view>
+				</view>
+
+				<button class="btn-connect" @tap="handleConnect">
+					<text v-if="connectStatus === 'connected'">✅ 已连接</text>
+					<text v-else-if="connectStatus === 'connecting'">⏳ 连接中...</text>
+					<text v-else>🔗 连接设备</text>
+				</button>
+
+				<view class="status-container">
+					<view class="status-indicator" :class="connectStatus">
+						<text v-if="connectStatus === 'connected'">🟢 在线</text>
+						<text v-else-if="connectStatus === 'connecting'">🟡 连接中</text>
+						<text v-else>🔴 离线</text>
+					</view>
+				</view>
+			</view>
+
+			<view class="card">
+				<view class="card-header">
+					<text class="card-title">📖 读取数据</text>
+				</view>
+
+				<view class="input-group">
+					<view class="input-item">
+						<text class="input-label">起始地址</text>
+						<input v-model="readStart" placeholder="读取起始地址" type="number" class="custom-input" />
+					</view>
+
+					<view class="input-item">
+						<text class="input-label">读取数量</text>
+						<input v-model="readCount" placeholder="读取数量" type="number" class="custom-input" />
+					</view>
+				</view>
+
+				<button class="btn-read" @tap="handleRead" :disabled="connectStatus!=='connected'">
+					<text>📥 读取数据</text>
+				</button>
+			</view>
+
+			<view class="card">
+				<view class="card-header">
+					<text class="card-title">✍️ 写入数据</text>
+				</view>
+
+				<view class="input-group">
+					<view class="input-item">
+						<text class="input-label">起始地址</text>
+						<input v-model="writeStart" placeholder="写入起始地址" type="number" class="custom-input" />
+					</view>
+
+					<view class="input-item">
+						<text class="input-label">写入值 (逗号分隔)</text>
+						<input v-model="writeValuesStr" placeholder="例如: 1,0,1,0" class="custom-input" />
+					</view>
+				</view>
+
+				<button class="btn-write" @tap="handleWrite" :disabled="connectStatus!=='connected'">
+					<text>📤 写入数据</text>
+				</button>
+			</view>
+
+			<view class="msg-section">
+				<view class="msg-header">
+					<text class="msg-title">📋 操作日志</text>
+					<button class="btn-clear" @tap="clearMsgList">清空</button>
+				</view>
+
+				<view class="msg-list" ref="msgList">
+					<view v-for="(msg, idx) in reversedMsgList" :key="idx" class="msg-item"
+						:class="getMessageType(msg)">
+						<text class="msg-time">{{ formatTime() }}</text>
+						<text class="msg-content">{{ msg }}</text>
+					</view>
+					<view v-if="reversedMsgList.length === 0" class="msg-empty">
+						<text>暂无操作记录</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script>
+	import { connect, read, write } from '@/uni_modules/fpss-modbus';
+	export default {
+		data() {
+			return {
+				ip: '59.110.90.239',
+				port: 502,
+				readStart: 0,
+				readCount: 1,
+				writeStart: 0,
+				writeValuesStr: '',
+				title: 'Modbus TCP Demo',
+				connectStatus: 'disconnected',
+				msgList: []
+			};
+		},
+		computed: {
+			reversedMsgList() {
+				return this.msgList.slice().reverse();
+			}
+		},
+		methods: {
+			handleConnect() {
+				this.connectStatus = 'connecting';
+				try {
+					connect({
+						param: {
+							host: this.ip,
+							port: this.port,
+							readStart: 0,
+							readCount: 0,
+							writeStart: 0,
+							writeValues: []
+						},
+						complete: res => {
+							console.log(res);
+							if (res && res.code === 0) {
+								this.connectStatus = 'connected';
+								this.addMsg('✅ 连接成功');
+							} else {
+								this.connectStatus = 'disconnected';
+								this.addMsg('❌ ' + (res.msg || '连接失败'));
+							}
+						}
+					});
+				} catch (e) {
+					this.connectStatus = 'disconnected';
+					this.addMsg('❌ 连接异常: ' + (e.message || e));
+				}
+			},
+			async handleRead() {
+				try {
+					read({
+						param: {
+							host: this.ip,
+							port: this.port,
+							readStart: this.readStart,
+							readCount: this.readCount,
+							writeStart: 0,
+							writeValues: []
+						},
+						complete: res => {
+							console.log(res);
+							if (res && res.code === 0) {
+								this.addMsg('📥 读取成功: ' + JSON.stringify(res.data));
+							} else {
+								this.addMsg('❌ 读取失败: ' + (res.msg || '未知错误'));
+							}
+						}
+					});
+				} catch (e) {
+					this.addMsg('❌ 读取异常: ' + (e.message || e));
+				}
+			},
+			async handleWrite() {
+				try {
+					const values = this.writeValuesStr.split(',').map(v => Number(v.trim()));
+					write({
+						param: {
+							host: this.ip,
+							port: this.port,
+							readStart: this.readStart,
+							readCount: this.readCount,
+							writeStart: this.writeStart,
+							writeValues: values
+						},
+						complete: res => {
+							console.log(res);
+							if (res && res.code === 0) {
+								this.addMsg('📤 写入成功');
+							} else {
+								this.addMsg('❌ 写入失败: ' + (res.msg || '未知错误'));
+							}
+						}
+					});
+				} catch (e) {
+					this.addMsg('❌ 写入异常: ' + (e.message || e));
+				}
+			},
+			clearMsgList() {
+				this.msgList = [];
+			},
+			addMsg(msg) {
+				this.msgList.push(msg);
+				this.$nextTick(() => {
+					let el = this.$refs.msgList;
+					if (el && el.scrollTop !== undefined) {
+						el.scrollTop = 0; // 滚动到顶部
+					}
+				});
+			},
+			getMessageType(msg) {
+				if (msg.includes('✅') || msg.includes('📥') || msg.includes('📤')) return 'success';
+				if (msg.includes('❌')) return 'error';
+				return 'info';
+			},
+			formatTime() {
+				const now = new Date();
+				return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+			}
+		}
+	};
+</script>
+
+<style>
+	.container {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		height: 100%;
+	}
+
+	.header {
+		text-align: center;
+		margin-bottom: 20px;
+	}
+
+	.header-title {
+		font-size: 24px;
+		font-weight: bold;
+		color: #fff;
+		display: block;
+	}
+
+	.header-subtitle {
+		font-size: 14px;
+		color: rgba(255, 255, 255, 0.8);
+		display: block;
+		margin-top: 5px;
+	}
+
+	.scroll-view {
+		height: 100%;
+		padding: 20rpx 15px 0px 20rpx;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.card {
+		background: #fff;
+		border-radius: 16px;
+		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+		padding: 20px;
+		margin-bottom: 20px;
+		transition: transform 0.3s ease;
+	}
+
+	.card:hover {
+		transform: translateY(-2px);
+	}
+
+	.card-header {
+		margin-bottom: 15px;
+	}
+
+	.card-title {
+		font-size: 18px;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.input-group {
+		margin-bottom: 15px;
+	}
+
+	.input-item {
+		margin-bottom: 12px;
+	}
+
+	.input-label {
+		display: block;
+		font-size: 14px;
+		color: #666;
+		margin-bottom: 6px;
+		font-weight: 500;
+	}
+
+	.custom-input {
+		width: 100%;
+		border: 1px solid #e0e0e0;
+		padding: 12px 15px;
+		border-radius: 10px;
+		font-size: 15px;
+		background: #fafafa;
+		box-sizing: border-box;
+		transition: border-color 0.3s;
+	}
+
+	.custom-input:focus {
+		border-color: #007aff;
+		background: #fff;
+		outline: none;
+	}
+
+	button {
+		margin: 10px 0;
+		width: 100%;
+		border: none;
+		padding: 14px 0;
+		border-radius: 10px;
+		font-size: 16px;
+		font-weight: 500;
+		transition: all 0.3s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	button:active {
+		transform: scale(0.98);
+	}
+
+	button:disabled {
+		opacity: 0.6;
+		transform: none;
+	}
+
+	.btn-connect {
+		background: linear-gradient(90deg, #43e97b, #38f9d7);
+		color: #333;
+		font-weight: bold;
+		box-shadow: 0 4px 15px rgba(67, 233, 123, 0.3);
+	}
+
+	.btn-read {
+		background: linear-gradient(90deg, #36d1c4, #007aff);
+		color: white;
+		box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+	}
+
+	.btn-write {
+		background: linear-gradient(90deg, #ffb347, #ffcc33);
+		color: #333;
+		font-weight: bold;
+		box-shadow: 0 4px 15px rgba(255, 179, 71, 0.3);
+	}
+
+	.status-container {
+		margin-top: 15px;
+		text-align: center;
+	}
+
+	.status-indicator {
+		display: inline-block;
+		padding: 8px 20px;
+		border-radius: 20px;
+		font-weight: 500;
+		font-size: 14px;
+	}
+
+	.status-indicator.connected {
+		background: #e6ffed;
+		color: #2ecc40;
+	}
+
+	.status-indicator.connecting {
+		background: #fffbe6;
+		color: #ff9800;
+	}
+
+	.status-indicator.disconnected {
+		background: #ffeaea;
+		color: #e74c3c;
+	}
+
+	.msg-section {
+		background: #fff;
+		border-radius: 16px;
+		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+		padding: 20px;
+		margin-bottom: 20px;
+	}
+
+	.msg-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 15px;
+	}
+
+	.msg-title {
+		font-size: 18px;
+		font-weight: bold;
+		color: #333;
+		flex: 1;
+	}
+
+	.btn-clear {
+		background: #f5f5f5;
+		color: #666;
+		border: none;
+		padding: 6px 16px;
+		border-radius: 20px;
+		font-size: 14px;
+		margin: 0;
+		width: auto;
+		flex-shrink: 0;
+	}
+
+	.msg-list {
+		max-height: 200px;
+		overflow-y: auto;
+	}
+
+	.msg-item {
+		padding: 12px 15px;
+		border-radius: 10px;
+		margin-bottom: 10px;
+		font-size: 14px;
+		word-break: break-all;
+		animation: fadeIn 0.3s;
+	}
+
+	.msg-item.success {
+		background: #e6ffed;
+		border-left: 4px solid #2ecc40;
+	}
+
+	.msg-item.error {
+		background: #ffeaea;
+		border-left: 4px solid #e74c3c;
+	}
+
+	.msg-item.info {
+		background: #e3f2fd;
+		border-left: 4px solid #2196f3;
+	}
+
+	.msg-time {
+		font-size: 12px;
+		color: #999;
+		display: block;
+		margin-bottom: 4px;
+	}
+
+	.msg-content {
+		color: #333;
+	}
+
+	.msg-empty {
+		text-align: center;
+		padding: 20px;
+		color: #999;
+		font-size: 14px;
+	}
+</style>

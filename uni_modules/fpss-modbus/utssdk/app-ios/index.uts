@@ -1,0 +1,94 @@
+
+
+/* 引入 interface.uts 文件中定义的变量 */
+import { ApiOptions, ApiResult, Connect, Read, Write } from '../interface.uts';
+
+/* 引入 unierror.uts 文件中定义的变量 */
+import { ApiFailImpl } from '../unierror';
+import { UInt16 } from 'Swift';
+let modbusClient = new ModbusTCPClient()
+export const connect : Connect = function (options : ApiOptions) {
+	var param = options.param
+	if (param != null) {
+		modbusClient.connect(host = param!.host, port = param!.port as unknown as UInt16)
+		// console.log("host=59.110.90.239");
+		// modbusClient.readHoldingRegisters(address = 0, count = 2, completion = (values : any) => {
+		// 	// if (values != null) {
+		// 	// 	console.log("读取到的寄存器值: " + JSONSerialization(values))
+		// 	// } else {
+		// 	// 	console.log("读取失败")
+		// 	// }
+		// 	console.log(values);
+		// })
+
+		// modbusClient.writeHoldingRegisters(address = 0, values = [77, 88], completion = (success : boolean) => {
+		// 	if (success == true) {
+		// 		console.log("写入成功！")
+		// 	} else {
+		// 		console.log("写入失败！")
+		// 	}
+		// })
+
+
+		// 返回数据
+		const res : ApiResult = {
+			code: 0,
+			msg: "连接成功",
+			data: null
+		};
+		options.success?.(res);
+		options.complete?.(res);
+
+	} else {
+		// 返回错误
+		let failResult = new ApiFailImpl(9010001);
+		options.fail?.(failResult)
+		options.complete?.(failResult)
+	}
+
+}
+
+// 读取
+export const read : Read = function (options : ApiOptions) {
+	var param = options.param
+	if (param != null) {
+		modbusClient.readHoldingRegisters(address = param!.readStart as unknown as UInt16, count = param!.readCount as unknown as UInt16, completion = (values : any) => {
+			console.log(2);
+			console.log(values);
+			// 返回数据
+			const res : ApiResult = {
+				code: 0,
+				msg: "读取成功",
+				data: values
+			};
+			options.complete?.(res);
+		})
+	} else {
+		// 返回错误
+		let failResult = new ApiFailImpl(9010001);
+		options.fail?.(failResult)
+		options.complete?.(failResult)
+	}
+
+}
+// 写入
+export const write : Write = function (options : ApiOptions) {
+	var param = options.param
+	if (param != null) {
+		modbusClient.writeHoldingRegisters(address = param!.writeStart as unknown as UInt16, values = param!.writeValues as unknown as Array<UInt16>, completion = (success : boolean) => {
+			// 返回数据
+			const res : ApiResult = {
+				code: 0,
+				msg: success == true ? "写入成功！" : "写入失败！",
+				data: null
+			};
+			options.complete?.(res);
+		})
+	} else {
+		// 返回错误
+		let failResult = new ApiFailImpl(9010001);
+		options.fail?.(failResult)
+		options.complete?.(failResult)
+	}
+
+}
