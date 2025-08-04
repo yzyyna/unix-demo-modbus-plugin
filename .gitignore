@@ -137,3 +137,30 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+
+# uni-app 忽略以下文件和目录
+DS_Store
+
+# 忽略 UniApp 编译生成的小程序相关目录
+unpackage/
+
+
+
+# 忽略编辑器自动生成的文件
+idea/
+vscode/
+
+# 忽略日志文件
+logs/
+
+# 忽略临时文件
+temp/
+
+# 忽略构建工具自动生成的文件
+build/
+
+# 忽略 npm 安装的包文件
+package-lock.json
+yarn.lock
+
