@@ -4,6 +4,7 @@
 			<view class="header">
 				<text class="header-title">Modbus TCP 控制台</text>
 				<text class="header-subtitle">设备连接与数据读写工具</text>
+				<input v-model="ip" type="text"></input>
 			</view>
 
 			<view class="card">
@@ -14,16 +15,16 @@
 				<view class="input-group">
 					<view class="input-item">
 						<text class="input-label">IP地址</text>
-						<input v-model="ip" placeholder="请输入IP地址" class="custom-input"  />
+						<input v-model="ip" placeholder="请输入IP地址" />
 					</view>
 
 					<view class="input-item">
 						<text class="input-label">端口</text>
-						<input v-model="port" placeholder="端口号" type="number" class="custom-input"  />
+						<input v-model="port" placeholder="端口号" type="number" />
 					</view>
 				</view>
 
-				<button class="btn-connect" @tap="handleConnect">
+				<button class="btn-connect button" @tap="handleConnect">
 					<text v-if="connectStatus === 'connected'">✅ 已连接</text>
 					<text v-else-if="connectStatus === 'connecting'">⏳ 连接中...</text>
 					<text v-else>🔗 连接设备</text>
@@ -46,16 +47,16 @@
 				<view class="input-group">
 					<view class="input-item">
 						<text class="input-label">起始地址</text>
-						<input v-model="readStart" placeholder="读取起始地址" type="number" class="custom-input" />
+						<input v-model="readStart" placeholder="读取起始地址" type="number" />
 					</view>
 
 					<view class="input-item">
 						<text class="input-label">读取数量</text>
-						<input v-model="readCount" placeholder="读取数量" type="number" class="custom-input" />
+						<input v-model="readCount" placeholder="读取数量" type="number" />
 					</view>
 				</view>
 
-				<button class="btn-read" @tap="handleRead" :disabled="connectStatus!=='connected'">
+				<button class="btn-read button" @tap="handleRead" :disabled="connectStatus !== 'connected'">
 					<text>📥 读取数据</text>
 				</button>
 			</view>
@@ -68,16 +69,16 @@
 				<view class="input-group">
 					<view class="input-item">
 						<text class="input-label">起始地址</text>
-						<input v-model="writeStart" placeholder="写入起始地址" type="number" class="custom-input" />
+						<input v-model="writeStart" placeholder="写入起始地址" type="number" />
 					</view>
 
 					<view class="input-item">
 						<text class="input-label">写入值 (逗号分隔)</text>
-						<input v-model="writeValuesStr" placeholder="例如: 1,0,1,0" class="custom-input" />
+						<input v-model="writeValuesStr" placeholder="例如: 1,0,1,0" />
 					</view>
 				</view>
 
-				<button class="btn-write" @tap="handleWrite" :disabled="connectStatus!=='connected'">
+				<button class="btn-write button" @tap="handleWrite" :disabled="connectStatus !== 'connected'">
 					<text>📤 写入数据</text>
 				</button>
 			</view>
@@ -85,7 +86,7 @@
 			<view class="msg-section">
 				<view class="msg-header">
 					<text class="msg-title">📋 操作日志</text>
-					<button class="btn-clear" @tap="clearMsgList">清空</button>
+					<button class="btn-clear button" @tap="clearMsgList">清空</button>
 				</view>
 
 				<view class="msg-list" ref="msgList">
@@ -104,29 +105,32 @@
 </template>
 
 <script>
-	import { connect, read, write } from '@/uni_modules/fpss-modbus';
+	import { connect, read, write } from '@/uni_modules/fpss-modbus'
 	export default {
 		data() {
 			return {
-				ip: '59.110.90.239',
-				port: 502,
-				readStart: 0,
+				// ip: '59.110.90.239',
+				// ip: '192.168.150.224',
+				ip: '192.168.4.1',
+				// port: 502,
+				port: 8080,
+				readStart: 452, // 452 电流互感比变化
 				readCount: 1,
 				writeStart: 0,
 				writeValuesStr: '',
 				title: 'Modbus TCP Demo',
 				connectStatus: 'disconnected',
 				msgList: []
-			};
+			}
 		},
 		computed: {
 			reversedMsgList() {
-				return this.msgList.slice().reverse();
+				return this.msgList.slice().reverse()
 			}
 		},
 		methods: {
 			handleConnect() {
-				this.connectStatus = 'connecting';
+				this.connectStatus = 'connecting'
 				try {
 					connect({
 						param: {
@@ -137,20 +141,19 @@
 							writeStart: 0,
 							writeValues: []
 						},
-						complete: res => {
-							console.log(res);
-							if (res && res.code === 0) {
-								this.connectStatus = 'connected';
-								this.addMsg('✅ 连接成功');
+						complete: (res) => {
+							if (res && res.code === 0 && res.msg === 'ready') {
+								this.connectStatus = 'connected'
+								this.addMsg('✅ 连接成功')
 							} else {
-								this.connectStatus = 'disconnected';
-								this.addMsg('❌ ' + (res.msg || '连接失败'));
+								this.connectStatus = 'disconnected'
+								this.addMsg('❌ ' + (res.msg || '连接失败'))
 							}
 						}
-					});
+					})
 				} catch (e) {
-					this.connectStatus = 'disconnected';
-					this.addMsg('❌ 连接异常: ' + (e.message || e));
+					this.connectStatus = 'disconnected'
+					this.addMsg('❌ 连接异常: ' + (e.message || e))
 				}
 			},
 			async handleRead() {
@@ -164,22 +167,23 @@
 							writeStart: 0,
 							writeValues: []
 						},
-						complete: res => {
-							console.log(res);
+						complete: (res) => {
 							if (res && res.code === 0) {
-								this.addMsg('📥 读取成功: ' + JSON.stringify(res.data));
+								this.addMsg('📥 读取成功: ' + JSON.stringify(res.data))
 							} else {
-								this.addMsg('❌ 读取失败: ' + (res.msg || '未知错误'));
+								this.addMsg('❌ 读取失败: ' + (res.msg || '未知错误'))
 							}
 						}
-					});
+					})
 				} catch (e) {
-					this.addMsg('❌ 读取异常: ' + (e.message || e));
+					this.addMsg('❌ 读取异常: ' + (e.message || e))
 				}
 			},
 			async handleWrite() {
 				try {
-					const values = this.writeValuesStr.split(',').map(v => Number(v.trim()));
+					const values = this.writeValuesStr
+						.split(',')
+						.map((v) => Number(v.trim()))
 					write({
 						param: {
 							host: this.ip,
@@ -189,42 +193,45 @@
 							writeStart: this.writeStart,
 							writeValues: values
 						},
-						complete: res => {
-							console.log(res);
+						complete: (res) => {
 							if (res && res.code === 0) {
-								this.addMsg('📤 写入成功');
+								this.addMsg('📤 写入成功')
 							} else {
-								this.addMsg('❌ 写入失败: ' + (res.msg || '未知错误'));
+								this.addMsg('❌ 写入失败: ' + (res.msg || '未知错误'))
 							}
 						}
-					});
+					})
 				} catch (e) {
-					this.addMsg('❌ 写入异常: ' + (e.message || e));
+					this.addMsg('❌ 写入异常: ' + (e.message || e))
 				}
 			},
 			clearMsgList() {
-				this.msgList = [];
+				this.msgList = []
 			},
 			addMsg(msg) {
-				this.msgList.push(msg);
+				this.msgList.push(msg)
 				this.$nextTick(() => {
-					let el = this.$refs.msgList;
+					let el = this.$refs.msgList
 					if (el && el.scrollTop !== undefined) {
-						el.scrollTop = 0; // 滚动到顶部
+						el.scrollTop = 0 // 滚动到顶部
 					}
-				});
+				})
 			},
 			getMessageType(msg) {
-				if (msg.includes('✅') || msg.includes('📥') || msg.includes('📤')) return 'success';
-				if (msg.includes('❌')) return 'error';
-				return 'info';
+				if (msg.includes('✅') || msg.includes('📥') || msg.includes('📤'))
+					return 'success'
+				if (msg.includes('❌')) return 'error'
+				return 'info'
 			},
 			formatTime() {
-				const now = new Date();
-				return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+				const now = new Date()
+				return `${now.getHours().toString().padStart(2, '0')}:${now
+					.getMinutes()
+					.toString()
+					.padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
 			}
 		}
-	};
+	}
 </script>
 
 <style>
@@ -242,20 +249,17 @@
 		font-size: 24px;
 		font-weight: bold;
 		color: #fff;
-		display: block;
 	}
 
 	.header-subtitle {
 		font-size: 14px;
 		color: rgba(255, 255, 255, 0.8);
-		display: block;
 		margin-top: 5px;
 	}
 
 	.scroll-view {
 		height: 100%;
 		padding: 20rpx 15px 0px 20rpx;
-		-webkit-overflow-scrolling: touch;
 	}
 
 	.card {
@@ -290,49 +294,33 @@
 	}
 
 	.input-label {
-		display: block;
 		font-size: 14px;
 		color: #666;
 		margin-bottom: 6px;
-		font-weight: 500;
+		font-weight: 400;
 	}
 
-	.custom-input {
-		width: 100%;
-		border: 1px solid #e0e0e0;
-		padding: 12px 15px;
-		border-radius: 10px;
-		font-size: 15px;
-		background: #fafafa;
-		box-sizing: border-box;
-		transition: border-color 0.3s;
-	}
 
-	.custom-input:focus {
-		border-color: #007aff;
-		background: #fff;
-		outline: none;
-	}
 
-	button {
+	.button {
 		margin: 10px 0;
 		width: 100%;
 		border: none;
 		padding: 14px 0;
 		border-radius: 10px;
 		font-size: 16px;
-		font-weight: 500;
+		font-weight: 400;
 		transition: all 0.3s;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
-	button:active {
+	.button:active {
 		transform: scale(0.98);
 	}
 
-	button:disabled {
+	.button:disabled {
 		opacity: 0.6;
 		transform: none;
 	}
@@ -345,7 +333,7 @@
 	}
 
 	.btn-read {
-		background: linear-gradient(90deg, #36d1c4, #007aff);
+		background: linear-gradient(90deg, #36d1c4, #0e3ec6);
 		color: white;
 		box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
 	}
@@ -363,10 +351,9 @@
 	}
 
 	.status-indicator {
-		display: inline-block;
 		padding: 8px 20px;
 		border-radius: 20px;
-		font-weight: 500;
+		font-weight: 400;
 		font-size: 14px;
 	}
 
@@ -421,7 +408,6 @@
 
 	.msg-list {
 		max-height: 200px;
-		overflow-y: auto;
 	}
 
 	.msg-item {
@@ -429,8 +415,7 @@
 		border-radius: 10px;
 		margin-bottom: 10px;
 		font-size: 14px;
-		word-break: break-all;
-		animation: fadeIn 0.3s;
+
 	}
 
 	.msg-item.success {
@@ -451,7 +436,6 @@
 	.msg-time {
 		font-size: 12px;
 		color: #999;
-		display: block;
 		margin-bottom: 4px;
 	}
 

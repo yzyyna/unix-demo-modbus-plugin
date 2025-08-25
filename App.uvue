@@ -45,7 +45,7 @@
 	.uni-column {
 		flex-direction: column;
 	}
-	page{
+	.page{
 		background-color: black;
 	}
 </style>

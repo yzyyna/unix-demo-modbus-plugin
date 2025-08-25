@@ -55,10 +55,19 @@
 		}
 	},
 	"app-ios": {
+		"capabilities": {
+			"entitlements": {
+				"com.apple.developer.networking.HotspotConfiguration": true,
+				"com.apple.developer.networking.wifi-info": true
+			}
+		},
 		"distribute": {
 			"modules": {},
 			"icons": {},
-			"splashScreens": {}
+			"splashScreens": {},
+			"privacyDescription": {
+				"NSLocationAlwaysAndWhenInUseUsageDescription": "访问位置以连接网络"
+			}
 		}
 	},
 	"web": {

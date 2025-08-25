@@ -1,0 +1,12 @@
+{
+    "version" : "1.0",
+    "configurations" : [
+        {
+            "bundleId" : "com.fortrust.fpss.wifi.test",
+            "certificateFile" : "/Users/fortrust/Documents/Projects/fortrust-wifi上架/苹果开发者Apple developer证书相关/测试证书和密钥/development.p12",
+            "certificateProfileFile" : "/Users/fortrust/Documents/Projects/fortrust-wifi上架/苹果开发者Apple developer证书相关/测试证书和密钥/developProfileOnlyTestPhoneWiFi.mobileprovision",
+            "runSignStatus" : 1,
+            "type" : "uni-app:app-ios"
+        }
+    ]
+}

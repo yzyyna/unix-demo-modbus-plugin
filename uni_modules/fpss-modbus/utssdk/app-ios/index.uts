@@ -5,12 +5,22 @@ import { ApiOptions, ApiResult, Connect, Read, Write } from '../interface.uts';
 
 /* 引入 unierror.uts 文件中定义的变量 */
 import { ApiFailImpl } from '../unierror';
-import { UInt16 } from 'Swift';
-let modbusClient = new ModbusTCPClient()
-export const connect : Connect = function (options : ApiOptions) {
+import { UInt16, UInt8 } from 'Swift';
+let modbusClient = new ModbusTCPClient(mode = ModbusTCPClient.ProtocolMode.rtuOverTcp)
+
+@UTSJS.keepAlive
+export function connect(options : ApiOptions) {
 	var param = options.param
 	if (param != null) {
-		modbusClient.connect(host = param!.host, port = param!.port as unknown as UInt16)
+		modbusClient.connect(host = param!.host, port = param!.port as unknown as UInt16, onStateChange = (res : any) => {
+			const resOut : ApiResult = {
+				code: 0,
+				msg: res,
+				data: null
+			};
+			options.success?.(resOut);
+			options.complete?.(resOut);
+		})
 		// console.log("host=59.110.90.239");
 		// modbusClient.readHoldingRegisters(address = 0, count = 2, completion = (values : any) => {
 		// 	// if (values != null) {
@@ -30,14 +40,7 @@ export const connect : Connect = function (options : ApiOptions) {
 		// })
 
 
-		// 返回数据
-		const res : ApiResult = {
-			code: 0,
-			msg: "连接成功",
-			data: null
-		};
-		options.success?.(res);
-		options.complete?.(res);
+
 
 	} else {
 		// 返回错误
@@ -52,9 +55,9 @@ export const connect : Connect = function (options : ApiOptions) {
 export const read : Read = function (options : ApiOptions) {
 	var param = options.param
 	if (param != null) {
-		modbusClient.readHoldingRegisters(address = param!.readStart as unknown as UInt16, count = param!.readCount as unknown as UInt16, completion = (values : any) => {
-			console.log(2);
-			console.log(values);
+		modbusClient.readHoldingRegisters(unitId = 1, address = param!.readStart as unknown as UInt16, count = param!.readCount as unknown as UInt16, completion = (values : any) => {
+
+			console.log("***读取值***", values);
 			// 返回数据
 			const res : ApiResult = {
 				code: 0,
@@ -75,7 +78,7 @@ export const read : Read = function (options : ApiOptions) {
 export const write : Write = function (options : ApiOptions) {
 	var param = options.param
 	if (param != null) {
-		modbusClient.writeHoldingRegisters(address = param!.writeStart as unknown as UInt16, values = param!.writeValues as unknown as Array<UInt16>, completion = (success : boolean) => {
+		modbusClient.writeHoldingRegisters(unitId = 1, address = param!.writeStart as unknown as UInt16, values = param!.writeValues as unknown as Array<UInt16>, completion = (success : boolean) => {
 			// 返回数据
 			const res : ApiResult = {
 				code: 0,
